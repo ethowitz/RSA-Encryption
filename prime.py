@@ -56,5 +56,3 @@ class Prime:
 			if (num % 2 != 0 and Prime.pre_test(num, 20001)
 				and Prime.rabin_miller_test(num)):
 				return num
-
-print(Prime.generate_prime(512))
