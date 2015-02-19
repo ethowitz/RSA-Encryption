@@ -1,7 +1,8 @@
-import sys, random
+import random
 
 class Prime:
 
+	# Sieve of Eratosthenes implementation
 	def sieve(max):
 		nums = list(range(3, max, 2))
 		primes = [2]
@@ -17,8 +18,14 @@ class Prime:
 					nums.remove(i)
 
 		print(primes)
-		print("there are " + str(count) + 
+		print("there are " + str(count) + \
 			" primes less than " + str(max))
+
+	def pre_test(num, max):
+		for test in range(3, max, 2):
+			if num % test == 0:
+				return False
+		return True
 
 	def rabin_miller_test(num, k=40):
 		d = num - 1
@@ -41,3 +48,13 @@ class Prime:
 				if x != num - 1:
 					return False
 		return True
+
+	def generate_prime(num_digits):
+		while True:
+			num = random.SystemRandom().randint(
+				pow(10, num_digits - 1), pow(10, num_digits))
+			if (num % 2 != 0 and Prime.pre_test(num, 20001)
+				and Prime.rabin_miller_test(num)):
+				return num
+
+print(Prime.generate_prime(512))
