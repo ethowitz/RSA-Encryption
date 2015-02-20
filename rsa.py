@@ -1,13 +1,25 @@
 import prime
 import random
 import decimal
+import os.path
 
 def totient(p1, p2):
 	return (p1 - 1) * (p2 - 1)
 
 #def encrypt(message, pub_key):	
-	
-#def write_to_file(key, filename):
+
+def generate_filename(base):
+	while os.path.isfile(base):
+		base = base + ".copy"
+	return base
+
+def write_to_file(modulus, exp, filename):
+	filename = generate_filename(filename)
+	with open(filename, "w") as file:
+		file.write(str(modulus))
+		file.write("\n")
+		file.write(str('{:f}'.format(exp)))
+		file.write("\n")
 
 # Euclidian algorithm implementation
 def gcd(n1, n2):
@@ -19,7 +31,7 @@ def gcd(n1, n2):
 # extended Euclidian algorithm to find modular multiplicative inverse of 
 #	e (mod phi(n))
 def modular_multi_inverse(a, n):
-	decimal.getcontext().prec = 512
+	decimal.getcontext().prec = 506
 
 	t = 0
 	r = n
@@ -36,7 +48,7 @@ def modular_multi_inverse(a, n):
 		t = t + n
 	return t
 
-#def generate_filename():
+
 
 # size is in bits
 def generate_keys(size=2048):
@@ -61,19 +73,11 @@ def generate_keys(size=2048):
 	# private key exponent
 	d = modular_multi_inverse(e, phi_n)
 
+	# write public key to file
+	write_to_file(n, e, "public_key")
+	#write private key to file
+	write_to_file(n, d, "private_key")
+
 	print("done")
 
-	print("p: " + str(p))
-	print("q: " + str(q))
-	print("n: " + str(n))
-	print("phi(n): " + str(phi_n))
-	print("e: " + str(e))
-	print("d: " + str(d))
-
 generate_keys()
-
-
-
-
-		
-
