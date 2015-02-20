@@ -2,11 +2,15 @@ import prime
 import random
 import decimal
 import os.path
+import hashlib
 
+################################################################################
+#			       ~Key Generation~                                #
+################################################################################
+
+# Euler's totient function implementation (where p1, p2 are prime integers)
 def totient(p1, p2):
-	return (p1 - 1) * (p2 - 1)
-
-#def encrypt(message, pub_key):	
+	return (p1 - 1) * (p2 - 1)	
 
 def generate_filename(base):
 	while os.path.isfile(base):
@@ -30,6 +34,8 @@ def gcd(n1, n2):
 
 # extended Euclidian algorithm to find modular multiplicative inverse of 
 #	e (mod phi(n))
+# adopted from 
+#    https://en.wikipedia.org/wiki/Extended_Euclidean_algorithm#Modular_integers
 def modular_multi_inverse(a, n):
 	decimal.getcontext().prec = 506
 
@@ -48,9 +54,8 @@ def modular_multi_inverse(a, n):
 		t = t + n
 	return t
 
-
-
 # size is in bits
+# adopted from https://en.wikipedia.org/wiki/RSA_(cryptosystem)#Key_generation
 def generate_keys(size=2048):
 	print("Generating keys...", end="")
 
@@ -80,4 +85,10 @@ def generate_keys(size=2048):
 
 	print("done")
 
-generate_keys()
+################################################################################
+#			         ~Encryption~                                  #
+################################################################################
+
+# pads input file according to optimal asymmetric encryption padding scheme
+# based on info from ftp://ftp.rsasecurity.com/pub/pkcs/pkcs-1/pkcs-1v2-1.pdf
+def oaep_padding():
