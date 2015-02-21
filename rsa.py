@@ -3,6 +3,9 @@ import random
 import decimal
 import os.path
 import hashlib
+import sys
+import binascii
+import os
 
 ################################################################################
 #			       ~Key Generation~                                #
@@ -91,4 +94,34 @@ def generate_keys(size=2048):
 
 # pads input file according to optimal asymmetric encryption padding scheme
 # based on info from ftp://ftp.rsasecurity.com/pub/pkcs/pkcs-1/pkcs-1v2-1.pdf
-def oaep_padding():
+def oaep_padding(n_len, message, label=""):
+	if label.len() > (2**61 - 1) / 8:
+		print("label too long")
+		sys.exit(1)
+
+	l_hash = hashlib.sha256(label.encode())
+
+	if message.len() > n_len - 2 * l_hash.digest_size() - 2:
+		print("message too long")
+		sys.exit(1)
+
+	ps = ""
+	for bit in 256 - n_len - 2 * l_hash.digest_size() - 1:
+		ps = ps +'0'
+	
+	ps = binascii.hexlify(ps.encode())
+	hex_one = binascii.hexlify('01'.encode()) # wrong
+
+	data_block = l_hash.digest() + ps + hex_one + message
+	
+
+
+
+
+
+
+
+
+
+	
+
