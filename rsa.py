@@ -5,7 +5,7 @@ import os.path
 import hashlib
 import sys
 import binascii
-import os
+import base64
 
 ################################################################################
 #			       ~Key Generation~                                #
@@ -92,28 +92,93 @@ def generate_keys(size=2048):
 #			         ~Encryption~                                  #
 ################################################################################
 
+def random_octet(length):
+	rand = random.SystemRandom().randint(pow(10, length - 1), pow(10, length))
+	return binascii.hexlify(str(rand).encode())
+
+'''
 # pads input file according to optimal asymmetric encryption padding scheme
 # based on info from ftp://ftp.rsasecurity.com/pub/pkcs/pkcs-1/pkcs-1v2-1.pdf
 def oaep_padding(n_len, message, label=""):
-	if label.len() > (2**61 - 1) / 8:
+	if len(label) > 2**61 - 1:
 		print("label too long")
 		sys.exit(1)
 
 	l_hash = hashlib.sha256(label.encode())
 
-	if message.len() > n_len - 2 * l_hash.digest_size() - 2:
+	if len(message) > n_len - 2 * l_hash.digest_size - 2:
 		print("message too long")
 		sys.exit(1)
 
-	ps = ""
-	for bit in 256 - n_len - 2 * l_hash.digest_size() - 1:
-		ps = ps +'0'
-	
-	ps = binascii.hexlify(ps.encode())
-	hex_one = binascii.hexlify('01'.encode()) # wrong
+	ps = b''
+	for bit in range(n_len - len(message) - 2 * l_hash.digest_size - 2):
+		ps = ps +b'00'
 
-	data_block = l_hash.digest() + ps + hex_one + message
+	hex_one = b'01'
+	message = binascii.hexlify(message.encode())
 	
+	data_block = l_hash.hexdigest().encode() + ps + hex_one + message
+
+	seed = random_octet(l_hash.digest_size)
+	
+	# length as second input?
+	data_block_mask = hashlib.sha256(seed).hexdigest()
+	masked_data_block = int(data_block, 16) ^ int(data_block_mask, 16)
+	
+	# length as second input?
+	seed_mask = hashlib.sha256(str(masked_data_block).encode()).hexdigest()
+	masked_seed = int(seed, 16) ^ int(seed_mask, 16)
+
+	encoded_message = (b'00' + hex(masked_seed)[2:].encode() 
+		+ hex(masked_data_block)[2:].encode())
+	
+	return encoded_message
+'''
+
+def oaep_padding(n_len, message, label=""):
+	if len(label) > 2**61 - 1:
+		print("label too long")
+		sys.exit(1)
+
+	l_hash = hashlib.sha256(label.encode())
+
+	if len(message) > n_len - 2 * l_hash.digest_size - 2:
+		print("message too long")
+		sys.exit(1)
+
+	ps = ''
+	for bit in range(n_len - len(message) - 2 * l_hash.digest_size - 2):
+		ps = ps +'00000000'
+
+	hex_one = '00000001'
+	message = to_octet_string(message)
+	
+	data_block = str(l_hash.digest()) + ps + hex_one + message
+
+	seed = random_octet(l_hash.digest_size)
+	
+	# length as second input?
+	data_block_mask = hashlib.sha256(seed).digest()
+	masked_data_block = int(data_block, 2) ^ data_block_mask
+	
+	# length as second input?
+	seed_mask = hashlib.sha256(str(masked_data_block).encode()).digest()
+	masked_seed = int(seed, 16) ^ seed_mask
+
+	encoded_message = ('00000000' + bin(masked_seed)[2:]
+		+ bin(masked_data_block)[2:])
+	
+	return encoded_message
+
+def to_octet_string(m):
+	octet_string = ''
+	for c in m:
+		octet_string += format(ord(c), 'b')
+	return octet_string
+
+print(oaep_padding(256, 'ethan'))
+
+
 
 
 
