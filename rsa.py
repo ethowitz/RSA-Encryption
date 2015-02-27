@@ -107,30 +107,54 @@ def oaep_padding(n_len, message, label=""):
 		print("message too long")
 		sys.exit(1)
 
-	ps = ''
+	data_block = bytearray.fromhex(l_hash.hexdigest())
+
+	#append one byte for each octet
 	for bit in range(n_len - len(message) - 2 * l_hash.digest_size - 2):
-		ps = ps +'00000000'
+		data_block.append(0)
+	data_block.append(1)
 
-	hex_one = '00000001'
-	message = to_octet_string(message)
-	
-	data_block = hex_to_bin(str(l_hash.hexdigest()))+ ps + hex_one + message
+	message = bytearray(message.encode())
+	data_block += message
 
-	seed = random_octet(l_hash.digest_size) # correct size?
+	seed = binascii.hexlify(random_octet(l_hash.digest_size))
+	seed = bytearray.fromhex(seed.decode())
 	
 	# length as second input?
-	data_block_mask = hex_to_bin(hashlib.sha256(seed).hexdigest())
-	masked_data_block = int(data_block, 2) ^ int(data_block_mask, 2)
+	data_block_mask = bytearray.fromhex(hashlib.sha256(seed).hexdigest())
+	masked_data_block = bitwise_xor(data_block, data_block_mask)
 	
 	# length as second input?
-	seed_mask = hex_to_bin(hashlib.sha256(str(masked_data_block).encode()).hexdigest())
-	masked_seed = int(seed, 16) ^ int(seed_mask, 2)
-	print(len(str(masked_seed)))
+	seed_mask = hashlib.sha256(masked_data_block).hexdigest()
+	seed_mask = bytearray.fromhex(seed_mask)
 
-	encoded_message = ('00000000' + bin(masked_seed)[2:]
-		+ bin(masked_data_block)[2:])
-	
+	masked_seed = bitwise_xor(seed, seed_mask)
+
+	encoded_message = bytearray()
+	encoded_message.append(0)
+	encoded_message = encoded_message + masked_seed + masked_data_block
+	print(encoded_message)
+
 	return encoded_message
+
+# function to compute bitwise XOR operation for two bytearrays
+def bitwise_xor(bytearray1, bytearray2):
+	result = bytearray()
+	if len(bytearray1) > len(bytearray2):
+		for c in bytearray1:
+			if c < len(bytearray2):
+				result.append(bytearray1[c] ^ bytearray2[c])
+			else:
+				# A xor 0 => A
+				result.append(bytearray1[c])
+	else:
+		for c in bytearray2:
+			if c < len(bytearray1):
+				result.append(bytearray1[c] ^ bytearray2[c])
+			else:
+				# A xor 0 => A
+				result.append(bytearray2[c])
+	return result
 
 def to_octet_string(m):
 	octet_string = ''
