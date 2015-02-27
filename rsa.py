@@ -5,7 +5,6 @@ import os.path
 import hashlib
 import sys
 import binascii
-import base64
 
 ################################################################################
 #			       ~Key Generation~                                #
@@ -22,11 +21,10 @@ def generate_filename(base):
 
 def write_to_file(modulus, exp, filename):
 	filename = generate_filename(filename)
-	with open(filename, "w") as file:
-		file.write(str(modulus))
-		file.write("\n")
-		file.write(str('{:f}'.format(exp)))
-		file.write("\n")
+	with open(filename, "w") as f:
+		f.write(str(modulus))
+		f.write("\n")
+		f.write(str('{:f}'.format(exp)))
 
 # Euclidian algorithm implementation
 def gcd(n1, n2):
@@ -116,7 +114,7 @@ def oaep_padding(n_len, message, label=""):
 	hex_one = '00000001'
 	message = to_octet_string(message)
 	
-	data_block = hex_to_bin(str(l_hash.hexdigest())) + ps + hex_one + message
+	data_block = hex_to_bin(str(l_hash.hexdigest()))+ ps + hex_one + message
 
 	seed = random_octet(l_hash.digest_size) # correct size?
 	
@@ -127,6 +125,7 @@ def oaep_padding(n_len, message, label=""):
 	# length as second input?
 	seed_mask = hex_to_bin(hashlib.sha256(str(masked_data_block).encode()).hexdigest())
 	masked_seed = int(seed, 16) ^ int(seed_mask, 2)
+	print(len(str(masked_seed)))
 
 	encoded_message = ('00000000' + bin(masked_seed)[2:]
 		+ bin(masked_data_block)[2:])
@@ -136,26 +135,46 @@ def oaep_padding(n_len, message, label=""):
 def to_octet_string(m):
 	octet_string = ''
 	for c in m:
-		octet_string += format(ord(c), 'b')
+		octet_string += '{:08b}'.format(ord(c), 'b')
 	return octet_string
 
 def hex_to_bin(m):
 	octet_string = ''
 	for c in range(0, len(m), 2):
-		octet_string += str(bin(int(m[c:c+2], 16)))[2:]
+		octet_string += '{0:0>8}'.format(str(bin(int(m[c:c+2], 16)))[2:])
 	return octet_string
 
-print(oaep_padding(256, 'ethan'))
+# converts an octet string to an integer
+def os2ip(m):
+	result = 0
+	count = 1
+	print(len(m))
+	for c in range(0, len(m), 8):
+		#				 extra 4 bits on m...
+		result += int(m[c:c+8], 2) * (256 ** ((len(m) // 8) - count))
+		count += 1
+	return result
 
+def i2osp(m):
+	if m >= 256 ** len(m):
+		print("integer too large")
+		sys.exit(1)
 
+	return int(m, 256)
 
-
-
-
-
-
-
-
-
+def encrypt_message(m):
+	message = oaep_padding(2048, m)
+	message = os2ip(message)
 	
+	n = 0
+	e = 0
+	with open("public_key", "r") as f:
+		n = int(f.readline())
+		e = int(f.readline())
 
+	message = (message ** e) % n
+	ciphertext = i2osp(message)
+
+	return ciphertext
+
+print(encrypt_message('ethan'))
