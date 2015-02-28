@@ -96,7 +96,7 @@ def random_octet(length):
 
 # pads input file according to optimal asymmetric encryption padding scheme
 # based on info from ftp://ftp.rsasecurity.com/pub/pkcs/pkcs-1/pkcs-1v2-1.pdf
-def oaep_padding(n_len, message, label=""):
+def oaep_encoding(n_len, message, label=""):
 	if len(label) > 2**61 - 1:
 		print("label too long")
 		sys.exit(1)
@@ -133,22 +133,56 @@ def oaep_padding(n_len, message, label=""):
 	encoded_message = bytearray()
 	encoded_message.append(0)
 	encoded_message = encoded_message + masked_seed + masked_data_block
-	print(encoded_message)
 
 	return encoded_message
+
+def oaep_decoding(n_len, message, label=""):
+	l_hash = hashlib.sha256(label)
+	h_len = l_hash.digest_size
+	message = bytearray(message)
+	
+	y = message[0]
+	masked_seed = bytearray()
+	masked_data_block = bytearray()
+
+	for i in range(0, h_len):
+		masked_seed.append(message[i + 1])
+		masked_data_block.append(message[i + h_len])
+
+	seed_mask = hashlib.sha256(masked_data_block)
+	seed = bitwise_xor(masked_seed, seed_mask)
+	data_block_mask = hashlib.sha256(seed)
+
+	data_block = bitwise_xor(masked_data_block, data_block_mask)
+
+	l_hash_prime = bytearray()
+	for i in range(0, h_len):
+		l_hash_prime.append(data_block[i])
+
+	count = l_hash
+	while data_block[count] != 1:
+		count += 1
+	count += 1
+
+	message = bytearray()
+	for i in range(count, len(data_block)):
+		message.append(data_block[i])
+	message = message.decode()
+
+	return message
 
 # function to compute bitwise XOR operation for two bytearrays
 def bitwise_xor(bytearray1, bytearray2):
 	result = bytearray()
 	if len(bytearray1) > len(bytearray2):
-		for c in bytearray1:
+		for c in range(0, len(bytearray1)):
 			if c < len(bytearray2):
 				result.append(bytearray1[c] ^ bytearray2[c])
 			else:
 				# A xor 0 => A
 				result.append(bytearray1[c])
 	else:
-		for c in bytearray2:
+		for c in range(0, len(bytearray2)):
 			if c < len(bytearray1):
 				result.append(bytearray1[c] ^ bytearray2[c])
 			else:
@@ -156,49 +190,77 @@ def bitwise_xor(bytearray1, bytearray2):
 				result.append(bytearray2[c])
 	return result
 
-def to_octet_string(m):
-	octet_string = ''
-	for c in m:
-		octet_string += '{:08b}'.format(ord(c), 'b')
-	return octet_string
-
-def hex_to_bin(m):
-	octet_string = ''
-	for c in range(0, len(m), 2):
-		octet_string += '{0:0>8}'.format(str(bin(int(m[c:c+2], 16)))[2:])
-	return octet_string
-
 # converts an octet string to an integer
 def os2ip(m):
 	result = 0
 	count = 1
-	print(len(m))
-	for c in range(0, len(m), 8):
-		#				 extra 4 bits on m...
-		result += int(m[c:c+8], 2) * (256 ** ((len(m) // 8) - count))
+	for b in m:
+		result += m[b] * (256 ** (len(m) - count))
 		count += 1
 	return result
 
 def i2osp(m):
-	if m >= 256 ** len(m):
+	if m >= 256 ** len(str(m)):
 		print("integer too large")
 		sys.exit(1)
 
-	return int(m, 256)
+	return dec_to_baseX(m, 256)
+
+def dec_to_baseX(num, base):
+	result = ''
+	while num >= base:
+		rem = num % base
+		num //= base
+		result = str(rem) + result
+	result = str(num % base) + result
+	return result
 
 def encrypt_message(m):
-	message = oaep_padding(2048, m)
-	message = os2ip(message)
-	
 	n = 0
 	e = 0
 	with open("public_key", "r") as f:
 		n = int(f.readline())
-		e = int(f.readline())
+		e = int(float(f.readline()))
 
-	message = (message ** e) % n
+	message = oaep_encoding(len(str(n)), m)
+	message = os2ip(message)
+	message = encryption_primative(message, n, e)
 	ciphertext = i2osp(message)
 
 	return ciphertext
 
-print(encrypt_message('ethan'))
+def encryption_primative(m, n ,e):
+	if m < 0 or m > n - 1:
+		print("message representative out of range")
+		sys.exit(1)
+
+	return pow(message, e, n)
+
+def decrypt_message(m):
+	n = 0
+	d = 0
+	with open("private_key", "r") as f:
+		n = int(f.readline())
+		e = int(float(f.readline()))
+
+	# check length
+
+	c = os2ip(m)
+	message = decryption_primative(m, n ,d)
+	encoded_message = i2osp(message)
+	message = oaep_decoding(message)
+
+	return message
+
+
+def decryption_primative(m, n ,d):
+	if c < 0 or c > n - 1:
+		print("ciphertext out of range")
+		sys.exit(1)
+
+	return pow(c, d, n)
+
+
+
+message = input("Enter the message you would like to encrypt: ")
+print(encrypt_message(message))
