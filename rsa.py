@@ -137,7 +137,7 @@ def oaep_encoding(n_len, message, label=""):
 	return encoded_message
 
 def oaep_decoding(n_len, message, label=""):
-	l_hash = hashlib.sha256(label)
+	l_hash = hashlib.sha256(label.encode())
 	h_len = l_hash.digest_size
 	message = bytearray(message)
 	
@@ -194,7 +194,7 @@ def bitwise_xor(bytearray1, bytearray2):
 def os2ip(m):
 	result = 0
 	count = 1
-	for b in m:
+	for b in range(0, len(m)):
 		result += m[b] * (256 ** (len(m) - count))
 		count += 1
 	return result
@@ -230,37 +230,38 @@ def encrypt_message(m):
 	return ciphertext
 
 def encryption_primative(m, n ,e):
-	if m < 0 or m > n - 1:
+	'''if m < 0 or m > n - 1:
 		print("message representative out of range")
-		sys.exit(1)
+		sys.exit(1)'''
 
-	return pow(message, e, n)
+	return pow(m, e, n)
 
 def decrypt_message(m):
 	n = 0
 	d = 0
 	with open("private_key", "r") as f:
 		n = int(f.readline())
-		e = int(float(f.readline()))
+		e = int(f.readline())
 
 	# check length
-
+	m = bytearray(m.encode())
 	c = os2ip(m)
-	message = decryption_primative(m, n ,d)
+	message = decryption_primative(c, n ,d)
 	encoded_message = i2osp(message)
-	message = oaep_decoding(message)
+	message = oaep_decoding(len(str(n)), message)
 
 	return message
 
 
 def decryption_primative(m, n ,d):
-	if c < 0 or c > n - 1:
+	if m < 0 or m > n - 1:
 		print("ciphertext out of range")
 		sys.exit(1)
 
-	return pow(c, d, n)
+	return pow(m, d, n)
 
 
 
 message = input("Enter the message you would like to encrypt: ")
 print(encrypt_message(message))
+print(decrypt_message(message))
