@@ -19,3 +19,6 @@ prime number generation.
 ###hexdump.py
 This file contains a function which produces a hexdump of the input file given
 as a command-line argument.
+
+##References
+References for implementation specifics are given in the .py files.
