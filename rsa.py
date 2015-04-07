@@ -10,15 +10,38 @@ import binascii
 #			       ~Key Generation~                                #
 ################################################################################
 
-# Euler's totient function implementation (where p1, p2 are prime integers)
+# totient()
+# 	purpose: This is an implementation for Euler's totient function.  This
+#		particular version is only valid for when p1 and p2 are prime
+#		integers
+#	parameters: p1 and p2 are prime integers
+#	return value: Gives phi(n), where n = p1 * p2, and phi(n) is the 
+#		count of the totatives of n
+#	references:
+#		https://en.wikipedia.org/wiki/RSA_(cryptosystem)#Key_generation
+#		https://en.wikipedia.org/wiki/Euler%27s_totient_function
 def totient(p1, p2):
 	return (p1 - 1) * (p2 - 1)	
 
+# generate_filename()
+#	purpose: Generates a filename by appending ".copy" to the end of the
+#		filename if the input filename already exists in the current
+#		working directory
+#	parameters: base = the desired filename
+#	return value: final filename
 def generate_filename(base):
 	while os.path.isfile(base):
 		base = base + ".copy"
 	return base
 
+# write_to_file()
+#	purpose: Writes the input encryption key to a file, with the modulus
+#		as the first line and the public/private exponent as the second
+#		line
+#	parameters: modulus = the modulus of the public and private keys;
+#		exp = public or private exponent;
+#		filename = file into which the key is being written
+#	return value: none
 def write_to_file(modulus, exp, filename):
 	filename = generate_filename(filename)
 	with open(filename, "w") as f:
@@ -26,17 +49,27 @@ def write_to_file(modulus, exp, filename):
 		f.write("\n")
 		f.write(str('{:f}'.format(exp)))
 
-# Euclidian algorithm implementation
+# gcd()
+#	purpose: Uses the Euclidean algorithm to find the greatest common
+#		divisor of the two input numbers
+#	parameters: n1 and n2 are the numbers whose greatest common divisor is
+#		is being found
+#	return value: the greatest common divisor of the two input numbers
+#	references:
+#		https://en.wikipedia.org/wiki/Euclidean_algorithm
 def gcd(n1, n2):
 	if n2 == 0:
 		return n1
 	else:
 		return gcd(n2, n1 % n2)
 
-# extended Euclidian algorithm to find modular multiplicative inverse of 
-#	e (mod phi(n))
-# adopted from 
-#    https://en.wikipedia.org/wiki/Extended_Euclidean_algorithm#Modular_integers
+# modular_multi_inverse()
+#	purpose: Finds the modular multiplicative inverse of a (mod n)
+#	parameters: a = the number whose modular multiplicative inverse is being
+#		calculated; n = the modulus of a
+#	return value: The modular multiplicative inverse of a (mod n)
+#	references: 
+# https://en.wikipedia.org/wiki/Extended_Euclidean_algorithm#Modular_integers
 def modular_multi_inverse(a, n):
 	decimal.getcontext().prec = 506
 
@@ -55,8 +88,14 @@ def modular_multi_inverse(a, n):
 		t = t + n
 	return t
 
-# size is in bits
-# adopted from https://en.wikipedia.org/wiki/RSA_(cryptosystem)#Key_generation
+# generate_keys()
+#	purpose: Generates two associated public and private keys and writes
+#		them to separate files
+#	parameters: size = desired size of the keys in bits (default size is
+#		2048 bits)
+#	return value: none
+#	references: 
+#		https://en.wikipedia.org/wiki/RSA_(cryptosystem)#Key_generation
 def generate_keys(size=2048):
 	print("Generating keys...", end="")
 
@@ -230,9 +269,9 @@ def encrypt_message(m):
 	return ciphertext
 
 def encryption_primative(m, n ,e):
-	'''if m < 0 or m > n - 1:
+	if m < 0 or m > n - 1:
 		print("message representative out of range")
-		sys.exit(1)'''
+		sys.exit(1)
 
 	return pow(m, e, n)
 
