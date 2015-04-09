@@ -218,14 +218,14 @@ def bitwise_xor(bytearray1, bytearray2):
 			if c < len(bytearray2):
 				result.append(bytearray1[c] ^ bytearray2[c])
 			else:
-				# A xor 0 => A
+				# A xor 0 = A
 				result.append(bytearray1[c])
 	else:
 		for c in range(0, len(bytearray2)):
 			if c < len(bytearray1):
 				result.append(bytearray1[c] ^ bytearray2[c])
 			else:
-				# A xor 0 => A
+				# A xor 0 = A
 				result.append(bytearray2[c])
 	return result
 
@@ -245,11 +245,15 @@ def i2osp(m):
 
 	return dec_to_baseX(m, 256)
 
-def dec_to_baseX(num, base):
+# dec_to_baseX()
+#	purpose: Converts a number of radix 10 to a number of a different radix
+#	parameters: num = decimal number to convert; radix = desired radix
+#	return value: number converted to the specified radix (as a string)
+def dec_to_baseX(num, radix):
 	result = ''
-	while num >= base:
-		rem = num % base
-		num //= base
+	while num >= radix:
+		rem = num % radix
+		num //= radix
 		result = str(rem) + result
 	result = str(num % base) + result
 	return result
@@ -298,9 +302,3 @@ def decryption_primative(m, n ,d):
 		sys.exit(1)
 
 	return pow(m, d, n)
-
-
-
-message = input("Enter the message you would like to encrypt: ")
-print(encrypt_message(message))
-print(decrypt_message(message))
