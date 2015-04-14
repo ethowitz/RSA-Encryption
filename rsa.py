@@ -144,15 +144,16 @@ def oaep_encoding(n_len, message, label=""):
 		sys.exit(1)
 
 	l_hash = hashlib.sha256(label.encode())
+	h_len = l_hash.digest_size
 
-	if len(message) > n_len - 2 * l_hash.digest_size - 2:
+	if len(message) > n_len - 2 * h_len - 2:
 		print("message too long")
 		sys.exit(1)
 
 	data_block = bytearray.fromhex(l_hash.hexdigest())
 
 	# append one byte for each octet
-	for bit in range(n_len - len(message) - 2 * l_hash.digest_size - 2):
+	for bit in range(n_len - len(message) - 2 * h_len - 2):
 		data_block.append(0)
 	data_block.append(1)
 
@@ -163,13 +164,11 @@ def oaep_encoding(n_len, message, label=""):
 	seed = bytearray.fromhex(seed.decode())
 	
 	# length as second input? --> mask generation function
-	data_block_mask = bytearray.fromhex(hashlib.sha256(seed).hexdigest())
+	data_block_mask = mask_gen_function(seed, n_len - h_len - 1)
 	masked_data_block = bitwise_xor(data_block, data_block_mask)
 	
 	# length as second input? --> mask generation function
-	seed_mask = hashlib.sha256(masked_data_block).hexdigest()
-	seed_mask = bytearray.fromhex(seed_mask)
-
+	seed_mask = mask_gen_function(masked_data_block, h_len)
 	masked_seed = bitwise_xor(seed, seed_mask)
 
 	encoded_message = bytearray()
@@ -180,14 +179,21 @@ def oaep_encoding(n_len, message, label=""):
 
 # output must be pseudorandom
 # MGF1
-def mask_gen_function(seed, m_len, h_len):
+def mask_gen_function(seed, m_len):
+	seed = hashlib.sha256(seed)
+	h_len = seed.digest_size
+
 	if m_len > (2 ** 32) * h_len:
 		print("mask too long")
 		sys.exit(1)
 
-	t = b'00000000'
+	t = bytearray()
+	t.append(0)
 
-	#for counter in range(0, math.ceil(m_len/h_len) - 1):
+	for c in range(0, math.ceil(float(m_len) / float(h_len)) - 1):
+		t += i2osp(c, 4)
+
+	return t[0:m_len]
 
 
 def oaep_decoding(n_len, message, label=""):
@@ -245,19 +251,25 @@ def bitwise_xor(bytearray1, bytearray2):
 	return result
 
 # converts an octet string to an integer
+# m must be bytearray
+# OS2IP --> Octet String TO Integer Primative
 def os2ip(m):
 	result = 0
-	count = 1
 	for b in range(0, len(m)):
-		result += m[b] * (256 ** (len(m) - count))
-		count += 1
+		result += m[b]
 	return result
 
 def i2osp(x, x_len):
 	if x >= 256 ** x_len:
 		print("integer too large")
 		sys.exit(1)
-	return dec_to_baseX(m, 256)
+	result = dec_to_baseX(x, 256)
+
+	# prepend list with zero octets until desired length is reached
+	while len(result) < x_len:
+		result.insert(0, 0)
+
+	return result
 
 # dec_to_baseX()
 #	purpose: Converts a number of radix 10 to a number of a different radix
@@ -283,7 +295,7 @@ def encrypt_message(m):
 	message = oaep_encoding(len(str(n)), m)
 	message = os2ip(message)
 	message = encryption_primative(message, n, e)
-	ciphertext = i2osp(message)
+	ciphertext = i2osp(message, len(str(n)))
 
 	return ciphertext
 
@@ -294,6 +306,7 @@ def encryption_primative(m, n ,e):
 
 	return pow(m, e, n)
 
+# m is byterray
 def decrypt_message(m):
 	n = 0
 	d = 0
@@ -302,10 +315,10 @@ def decrypt_message(m):
 		e = int(f.readline())
 
 	# check length
-	m = bytearray(m.encode())
+	#m = bytearray(m.encode())
 	c = os2ip(m)
 	message = decryption_primative(c, n ,d)
-	encoded_message = i2osp(message)
+	encoded_message = i2osp(message, len(str(n)))
 	message = oaep_decoding(len(str(n)), message)
 
 	return message

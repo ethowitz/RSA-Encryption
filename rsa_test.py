@@ -1,6 +1,8 @@
 import rsa
 import prime
 
-#rsa.generate_keys()
+rsa.generate_keys()
 message = "ethan"
-print(rsa.encrypt_message(message))
+encrypted = rsa.encrypt_message(message)
+decrypted = rsa.decrypt_message(encrypted)
+print(decrypted)
