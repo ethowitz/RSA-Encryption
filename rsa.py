@@ -5,6 +5,7 @@ import os.path
 import hashlib
 import sys
 import binascii
+import math
 
 ################################################################################
 #			       ~Key Generation~                                #
@@ -70,6 +71,7 @@ def gcd(n1, n2):
 #	return value: The modular multiplicative inverse of a (mod n)
 #	references: 
 # https://en.wikipedia.org/wiki/Extended_Euclidean_algorithm#Modular_integers
+# TODO: sometimes function stalls during calculation 
 def modular_multi_inverse(a, n):
 	decimal.getcontext().prec = 506
 
@@ -129,6 +131,7 @@ def generate_keys(size=2048):
 #			         ~Encryption~                                  #
 ################################################################################
 
+# length is in bytes
 def random_octet(length):
 	rand = random.SystemRandom().randint(pow(10, length - 1), pow(10, length))
 	return binascii.hexlify(str(rand).encode())
@@ -148,7 +151,7 @@ def oaep_encoding(n_len, message, label=""):
 
 	data_block = bytearray.fromhex(l_hash.hexdigest())
 
-	#append one byte for each octet
+	# append one byte for each octet
 	for bit in range(n_len - len(message) - 2 * l_hash.digest_size - 2):
 		data_block.append(0)
 	data_block.append(1)
@@ -159,11 +162,11 @@ def oaep_encoding(n_len, message, label=""):
 	seed = binascii.hexlify(random_octet(l_hash.digest_size))
 	seed = bytearray.fromhex(seed.decode())
 	
-	# length as second input?
+	# length as second input? --> mask generation function
 	data_block_mask = bytearray.fromhex(hashlib.sha256(seed).hexdigest())
 	masked_data_block = bitwise_xor(data_block, data_block_mask)
 	
-	# length as second input?
+	# length as second input? --> mask generation function
 	seed_mask = hashlib.sha256(masked_data_block).hexdigest()
 	seed_mask = bytearray.fromhex(seed_mask)
 
@@ -174,6 +177,18 @@ def oaep_encoding(n_len, message, label=""):
 	encoded_message = encoded_message + masked_seed + masked_data_block
 
 	return encoded_message
+
+# output must be pseudorandom
+# MGF1
+def mask_gen_function(seed, m_len, h_len):
+	if m_len > (2 ** 32) * h_len:
+		print("mask too long")
+		sys.exit(1)
+
+	t = b'00000000'
+
+	#for counter in range(0, math.ceil(m_len/h_len) - 1):
+
 
 def oaep_decoding(n_len, message, label=""):
 	l_hash = hashlib.sha256(label.encode())
@@ -238,11 +253,10 @@ def os2ip(m):
 		count += 1
 	return result
 
-def i2osp(m):
-	if m >= 256 ** len(str(m)):
+def i2osp(x, x_len):
+	if x >= 256 ** x_len:
 		print("integer too large")
 		sys.exit(1)
-
 	return dec_to_baseX(m, 256)
 
 # dec_to_baseX()
@@ -250,12 +264,12 @@ def i2osp(m):
 #	parameters: num = decimal number to convert; radix = desired radix
 #	return value: number converted to the specified radix (as a string)
 def dec_to_baseX(num, radix):
-	result = ''
+	result = bytearray()
 	while num >= radix:
 		rem = num % radix
 		num //= radix
-		result = str(rem) + result
-	result = str(num % base) + result
+		result.insert(0, rem)
+	result.insert(0, num % radix)
 	return result
 
 def encrypt_message(m):
@@ -265,6 +279,7 @@ def encrypt_message(m):
 		n = int(f.readline())
 		e = int(float(f.readline()))
 
+	# length of n has to be in octets
 	message = oaep_encoding(len(str(n)), m)
 	message = os2ip(message)
 	message = encryption_primative(message, n, e)
