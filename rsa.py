@@ -16,13 +16,13 @@ import math
 #                particular version is only valid for when p1 and p2 are prime
 #                integers
 #        parameters: p1 and p2 are prime integers
-#        return value: Gives phi(n), where n = p1 * p2, and phi(n) is the 
+#        return value: Gives phi(n), where n = p1 * p2, and phi(n) is the
 #                count of the totatives of n
 #        references:
 #                https://en.wikipedia.org/wiki/RSA_(cryptosystem)#Key_generation
 #                https://en.wikipedia.org/wiki/Euler%27s_totient_function
 def totient(p1, p2):
-        return (p1 - 1) * (p2 - 1)        
+        return (p1 - 1) * (p2 - 1)
 
 # generate_filename()
 #        purpose: Generates a filename by appending ".copy" to the end of the
@@ -69,9 +69,9 @@ def gcd(n1, n2):
 #        parameters: a = the number whose modular multiplicative inverse is being
 #                calculated; n = the modulus of a
 #        return value: The modular multiplicative inverse of a (mod n)
-#        references: 
+#        references:
 # https://en.wikipedia.org/wiki/Extended_Euclidean_algorithm#Modular_integers
-# TODO: sometimes function stalls during calculation 
+# TODO: sometimes function stalls during calculation
 # TODO: when precision is greater than 506, function runs indefinitely...
 def modular_multi_inverse(a, n):
         decimal.getcontext().prec = 506
@@ -97,18 +97,20 @@ def modular_multi_inverse(a, n):
 #        parameters: size = desired size of the keys in bits (default size is
 #                2048 bits)
 #        return value: none
-#        references: 
+#        references:
 #                https://en.wikipedia.org/wiki/RSA_(cryptosystem)#Key_generation
 def generate_keys(size=2048):
         print("Generating keys...", end="")
 
-        p = prime.generate_prime(size / 8)
+        p = prime.generate_prime(size // 4)
         q = p
 
         while p == q:
-                q = prime.generate_prime(size / 8)
+                q = prime.generate_prime(size // 4)
 
-        n = p * q
+        n = str(p * q)[0:size]
+        print(len(n))
+        n = int(n)
         phi_n = totient(p, q)
 
         # public key exponent
@@ -126,16 +128,11 @@ def generate_keys(size=2048):
         #write private key to file
         write_to_file(n, d, "private_key")
 
-        print("done")
+        print("done") # TODO: asynchronous?
 
 ################################################################################
-#                                 ~Encryption~                                  #
+#                                 ~Encryption~                                 #
 ################################################################################
-
-# length is in bytes
-def random_octet(length):
-        rand = random.SystemRandom().randint(pow(10, length - 1), pow(10, length))
-        return binascii.hexlify(str(rand).encode())
 
 # pads input file according to optimal asymmetric encryption padding scheme
 # based on info from ftp://ftp.rsasecurity.com/pub/pkcs/pkcs-1/pkcs-1v2-1.pdf
@@ -161,12 +158,11 @@ def oaep_encoding(n_len, message, label=""):
         message = bytearray(message.encode())
         data_block += message
 
-        seed = binascii.hexlify(random_octet(l_hash.digest_size))
-        seed = bytearray.fromhex(seed.decode())
-        
+        seed = bytearray(os.urandom(h_len))
+
         data_block_mask = mask_gen_function(seed, n_len - h_len - 1)
         masked_data_block = bitwise_xor(data_block, data_block_mask)
-        
+
         seed_mask = mask_gen_function(masked_data_block, h_len)
         masked_seed = bitwise_xor(seed, seed_mask)
 
@@ -189,12 +185,12 @@ def mask_gen_function(seed, m_len):
 
         t = bytearray()
         t.append(0)
-
         for c in range(0, math.ceil(float(m_len) / float(h_len)) - 1):
                 t += i2osp(c, 4)
-        print(m_len)###
-        print(len(t[0:m_len]))###
-        print()###
+        print(m_len)
+        print(h_len)
+        print()
+
         return t[0:m_len]
 
 def oaep_decoding(n_len, message, label=""):
@@ -205,12 +201,12 @@ def oaep_decoding(n_len, message, label=""):
         y = message[0]
         masked_seed = bytearray()
         masked_data_block = bytearray()
-        
+
         for i in range(0, h_len):
                 masked_seed.append(message[i + 1])
         for i in range(0, n_len - h_len - 1):
                 masked_data_block.append(message[i + h_len + 1])
-        
+
         # what should n_len be? number of octets of integer?
         seed_mask = mask_gen_function(masked_data_block, h_len)
         sys.exit(1) ###
@@ -261,8 +257,10 @@ def bitwise_xor(bytearray1, bytearray2):
 # OS2IP --> Octet String TO Integer Primative
 def os2ip(m):
         result = 0
-        for b in range(0, len(m)):
-                result += m[b]
+        m_len = len(m)
+        for b in range(0, m_len):
+                #ASSUMPTION: m[0] = ms-byte
+                result += (m[b] * (256 ** (m_len - b - 1)))
         return result
 
 def i2osp(x, x_len):
@@ -276,7 +274,7 @@ def i2osp(x, x_len):
                 result.insert(0, 0)
 
         return result
-        
+
 # dec_to_baseX()
 #        purpose: Converts a number of radix 10 to a number of a different radix
 #        parameters: num = decimal number to convert; radix = desired radix
@@ -297,8 +295,10 @@ def encrypt_message(m):
                 n = int(f.readline())
                 e = int(float(f.readline()))
 
-        # TODO: length of n has to be in octets?
-        message = oaep_encoding(len(str(n)), m)
+        n_len = len(dec_to_baseX(n, 256))
+        print(n_len)###
+        print(len(m))###
+        message = oaep_encoding(n_len, m)
         message = os2ip(message)
         message = encryption_primative(message, n, e)
         ciphertext = i2osp(message, len(str(n)))
@@ -323,10 +323,11 @@ def decrypt_message(m):
         # check length
         #m = bytearray(m.encode())
         c = os2ip(m)
-        
+        n_len = len(dec_to_baseX(n, 256))
+
         message = decryption_primative(c, n ,d)
         encoded_message = i2osp(message, len(str(n)))
-        message = oaep_decoding(len(str(n)), encoded_message)
+        message = oaep_decoding(n_len, encoded_message)
 
         return message
 
