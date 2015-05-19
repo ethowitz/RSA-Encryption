@@ -1,4 +1,4 @@
-#Cryptography
+#RSA Encryption Standard
 
 This repository contains an implementation of the RSA encryption standard
 written in Python.  The implementation follows most of the guidelines and 
