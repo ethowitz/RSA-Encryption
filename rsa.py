@@ -8,7 +8,7 @@ import binascii
 import math
 
 ################################################################################
-#                               ~Key Generation~                                #
+#                               ~Key Generation~                               #
 ################################################################################
 
 # totient()
@@ -66,8 +66,8 @@ def gcd(n1, n2):
 
 # modular_multi_inverse()
 #        purpose: Finds the modular multiplicative inverse of a (mod n)
-#        parameters: a = the number whose modular multiplicative inverse is being
-#                calculated; n = the modulus of a
+#        parameters: a = the number whose modular multiplicative inverse is
+#               being calculated; n = the modulus of a
 #        return value: The modular multiplicative inverse of a (mod n)
 #        references:
 # https://en.wikipedia.org/wiki/Extended_Euclidean_algorithm#Modular_integers
@@ -99,6 +99,7 @@ def modular_multi_inverse(a, n):
 #        return value: none
 #        references:
 #                https://en.wikipedia.org/wiki/RSA_(cryptosystem)#Key_generation
+# TODO: WRONG!!!!
 def generate_keys(size=2048):
         print("Generating keys...", end="")
 
