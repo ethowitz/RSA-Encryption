@@ -1,135 +1,7 @@
-import prime
-import random
-import decimal
 import os.path
 import hashlib
 import sys
-import binascii
 import math
-
-################################################################################
-#                               ~Key Generation~                               #
-################################################################################
-
-# totient()
-#         purpose: This is an implementation for Euler's totient function.  This
-#                particular version is only valid for when p1 and p2 are prime
-#                integers
-#        parameters: p1 and p2 are prime integers
-#        return value: Gives phi(n), where n = p1 * p2, and phi(n) is the
-#                count of the totatives of n
-#        references:
-#                https://en.wikipedia.org/wiki/RSA_(cryptosystem)#Key_generation
-#                https://en.wikipedia.org/wiki/Euler%27s_totient_function
-def totient(p1, p2):
-        return (p1 - 1) * (p2 - 1)
-
-# generate_filename()
-#        purpose: Generates a filename by appending ".copy" to the end of the
-#                filename if the input filename already exists in the current
-#                working directory
-#        parameters: base = the desired filename
-#        return value: final filename
-def generate_filename(base):
-        while os.path.isfile(base):
-                base = base + ".copy"
-        return base
-
-# write_to_file()
-#        purpose: Writes the input encryption key to a file, with the modulus
-#                as the first line and the public/private exponent as the second
-#                line
-#        parameters: modulus = the modulus of the public and private keys;
-#                exp = public or private exponent;
-#                filename = file into which the key is being written
-#        return value: none
-def write_to_file(modulus, exp, filename):
-        filename = generate_filename(filename)
-        with open(filename, "w") as f:
-                f.write(str(modulus))
-                f.write("\n")
-                f.write(str('{:f}'.format(exp)))
-
-# gcd()
-#        purpose: Uses the Euclidean algorithm to find the greatest common
-#                divisor of the two input numbers
-#        parameters: n1 and n2 are the numbers whose greatest common divisor is
-#                is being found
-#        return value: the greatest common divisor of the two input numbers
-#        references:
-#                https://en.wikipedia.org/wiki/Euclidean_algorithm
-def gcd(n1, n2):
-        if n2 == 0:
-                return n1
-        else:
-                return gcd(n2, n1 % n2)
-
-# modular_multi_inverse()
-#        purpose: Finds the modular multiplicative inverse of a (mod n)
-#        parameters: a = the number whose modular multiplicative inverse is
-#               being calculated; n = the modulus of a
-#        return value: The modular multiplicative inverse of a (mod n)
-#        references:
-# https://en.wikipedia.org/wiki/Extended_Euclidean_algorithm#Modular_integers
-# TODO: sometimes function stalls during calculation
-# TODO: when precision is greater than 506, function runs indefinitely...
-def modular_multi_inverse(a, n):
-        decimal.getcontext().prec = 506
-
-        t = 0
-        r = n
-        new_t = 1
-        new_r = a
-
-        while new_r != 0:
-                quotient = decimal.Decimal(r) / decimal.Decimal(new_r)
-                t = new_t
-                new_t = t - quotient * new_t
-                r = new_r
-                new_r = r - quotient * new_r
-        if t < 0:
-                t = t + n
-        return t
-
-# generate_keys()
-#        purpose: Generates two associated public and private keys and writes
-#                them to separate files
-#        parameters: size = desired size of the keys in bits (default size is
-#                2048 bits)
-#        return value: none
-#        references:
-#                https://en.wikipedia.org/wiki/RSA_(cryptosystem)#Key_generation
-# TODO: WRONG!!!!
-def generate_keys(size=2048):
-        print("Generating keys...", end="")
-
-        p = prime.generate_prime(size // 4)
-        q = p
-
-        while p == q:
-                q = prime.generate_prime(size // 4)
-
-        n = str(p * q)[0:size]
-        print(len(n))
-        n = int(n)
-        phi_n = totient(p, q)
-
-        # public key exponent
-        e = 65537
-
-        # if e and phi_n are not coprime (unlikely)
-        while gcd(e, phi_n) != 1:
-                e += 2
-
-        # private key exponent
-        d = modular_multi_inverse(e, phi_n)
-
-        # write public key to file
-        write_to_file(n, e, "public_key")
-        #write private key to file
-        write_to_file(n, d, "private_key")
-
-        print("done") # TODO: asynchronous?
 
 ################################################################################
 #                                 ~Encryption~                                 #
@@ -188,11 +60,8 @@ def mask_gen_function(seed, m_len):
         t.append(0)
         for c in range(0, math.ceil(float(m_len) / float(h_len)) - 1):
                 t += i2osp(c, 4)
-        print(m_len)
-        print(h_len)
-        print()
-
         return t[0:m_len]
+
 
 def oaep_decoding(n_len, message, label=""):
         l_hash = hashlib.sha256(label.encode())
@@ -210,9 +79,8 @@ def oaep_decoding(n_len, message, label=""):
 
         # what should n_len be? number of octets of integer?
         seed_mask = mask_gen_function(masked_data_block, h_len)
-        sys.exit(1) ###
         seed = bitwise_xor(masked_seed, seed_mask)
-        data_block_mask = hashlib.sha256(seed)
+        data_block_mask = mask_gen_function(seed, n_len - h_len - 1)
 
         data_block = bitwise_xor(masked_data_block, data_block_mask)
 
@@ -220,9 +88,9 @@ def oaep_decoding(n_len, message, label=""):
         for i in range(0, h_len):
                 l_hash_prime.append(data_block[i])
 
-        count = l_hash
+        count = l_hash.digest_size
         while data_block[count] != 1:
-                count += 1
+                count -= 1
         count += 1
 
         message = bytearray()
@@ -296,14 +164,13 @@ def encrypt_message(m):
                 n = int(f.readline())
                 e = int(float(f.readline()))
 
-        n_len = len(dec_to_baseX(n, 256))
-        print(n_len)###
-        print(len(m))###
+        n_len = len(dec_to_baseX(n, 2)) // 8
+
         message = oaep_encoding(n_len, m)
         message = os2ip(message)
         message = encryption_primative(message, n, e)
         ciphertext = i2osp(message, len(str(n)))
-
+        
         return ciphertext
 
 def encryption_primative(m, n ,e):
@@ -322,7 +189,6 @@ def decrypt_message(m):
                 d = int(f.readline())
 
         # check length
-        #m = bytearray(m.encode())
         c = os2ip(m)
         n_len = len(dec_to_baseX(n, 256))
 
