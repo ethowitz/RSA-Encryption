@@ -10,6 +10,8 @@ import math
 # pads input file according to optimal asymmetric encryption padding scheme
 # based on info from ftp://ftp.rsasecurity.com/pub/pkcs/pkcs-1/pkcs-1v2-1.pdf
 def oaep_encoding(n_len, message, label=""):
+        message = bytearray(message.encode())
+
         if len(label) > 2**61 - 1:
                 print("label too long")
                 sys.exit(1)
@@ -21,14 +23,13 @@ def oaep_encoding(n_len, message, label=""):
                 print("message too long")
                 sys.exit(1)
 
-        data_block = bytearray.fromhex(l_hash.hexdigest())
+        data_block = bytearray(l_hash.digest())
 
         # append one byte for each octet
         for bit in range(n_len - len(message) - 2 * h_len - 2):
                 data_block.append(0)
         data_block.append(1)
 
-        message = bytearray(message.encode())
         data_block += message
 
         seed = bytearray(os.urandom(h_len))
@@ -51,6 +52,7 @@ def oaep_encoding(n_len, message, label=""):
 def mask_gen_function(seed, m_len):
         seed = hashlib.sha256(seed)
         h_len = seed.digest_size
+        seed = seed.digest()
 
         if m_len > (2 ** 32) * h_len:
                 print("mask too long")
@@ -59,7 +61,8 @@ def mask_gen_function(seed, m_len):
         t = bytearray()
         t.append(0)
         for c in range(0, math.ceil(float(m_len) / float(h_len)) - 1):
-                t += i2osp(c, 4)
+                d = i2osp(c, 4)
+                t += hashlib.sha256(seed + d).digest()
         return t[0:m_len]
 
 
@@ -164,7 +167,8 @@ def encrypt_message(m):
                 n = int(f.readline())
                 e = int(float(f.readline()))
 
-        n_len = len(dec_to_baseX(n, 2)) // 8
+        n_len = math.ceil(len(dec_to_baseX(n, 2)) / 8)
+        print(n_len)
 
         message = oaep_encoding(n_len, m)
         message = os2ip(message)

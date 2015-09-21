@@ -41,7 +41,6 @@ def rabin_miller_test(num, k=40):
 
 	for i in range(k):
 		witness = random.SystemRandom().randint(2, num - 2)
-		print(witness)
 		x = pow(witness, d, num)
 		if not (x == 1 or x == num - 1):
 			for j in range(s - 1):
@@ -54,9 +53,9 @@ def rabin_miller_test(num, k=40):
 				return False
 	return True
 
-def generate_prime(num_bits):
+def generate_prime(num_bits=2048):
 	while True:
-		num = rsa.os2ip(bytearray(os.urandom(num_bits)))
+		num = rsa.os2ip(bytearray(os.urandom(num_bits//8)))
 		if (num % 2 != 0 and pre_test(num, 20001) and fermat_test(num)
 			and rabin_miller_test(num)):
 			return num

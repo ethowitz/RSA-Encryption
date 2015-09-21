@@ -2,6 +2,7 @@ import os
 import decimal
 import prime
 import rsa
+import math
 
 # totient()
 #         purpose: This is an implementation for Euler's totient function.  This
@@ -93,18 +94,14 @@ def modular_multi_inverse(a, n):
 #                https://en.wikipedia.org/wiki/RSA_(cryptosystem)#Key_generation
 # TODO: WRONG!!!!
 def generate_keys(size=2048):
-        p = prime.generate_prime(size // 2)
-        q = p
+        e = 65537
 
-        while p == q:
-                q = prime.generate_prime(size // 2)
+        p = prime.generate_prime(1024)
+        q = prime.generate_prime(1024)
 
         n = str(p * q)[0:size]
         n = int(n)
         phi_n = totient(p, q)
-
-        # public key exponent
-        e = 65537
 
         # if e and phi_n are not coprime (unlikely)
         while gcd(e, phi_n) != 1:
